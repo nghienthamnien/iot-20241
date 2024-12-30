@@ -1,10 +1,10 @@
-import { DataEsp32 } from "../config/connectDB";
+import DataEsp32 from "../model/data-esp32";
 
 export const createData = async (message: any) => {
   try {
     const data = JSON.parse(message.toString());
     // Thêm các trường riêng lẻ vào Firestore
-    await DataEsp32.add({
+    await DataEsp32.create({
       from: data.from,
       temperature: data.temperature,
       humidity: data.humidity,

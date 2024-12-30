@@ -1,5 +1,6 @@
-import { user } from "../config/connectDB";
+// import { user } from "../config/connectDB";
 import { Request, Response } from "express";
+import User from "../model/user";
 
 declare module "express-session" {
   export interface SessionData {
@@ -11,24 +12,16 @@ declare module "express-session" {
 export const createUser = async (req: Request, res: Response) => {
   const { username, password, gmail } = req.body;
   try {
-    const entry = user.doc();
-    const peopleObject = {
-      id: entry.id,
-      username,
-      password,
-      gmail,
-    };
-    const querySnapshot = await user
-      .where("gmail", "==", peopleObject.gmail)
-      .get();
-    if (querySnapshot.size != 0) {
+    const IsUserExisting = await User.findOne({ gmail });
+
+    if (IsUserExisting) {
       res
         .status(400)
         .send(
           "Account's gmail already exits, please change different username !"
         );
     } else {
-      await entry.set(peopleObject);
+      await User.create(req.body);
       res.status(200).send({
         status: "success",
         message: "Account added, register successfully !",
@@ -43,12 +36,12 @@ export const findUserById = async (req: Request, res: Response) => {
   const { id } = req.params;
 
   try {
-    const doc = await user.doc(id).get();
+    const doc = await User.findById(id);
 
-    if (!doc.exists) {
+    if (!doc) {
       res.status(404).send("User not found");
     } else {
-      res.status(200).send(doc.data());
+      res.status(200).send(doc);
     }
   } catch (error: any) {
     res.status(500).json(error.message);
@@ -56,34 +49,26 @@ export const findUserById = async (req: Request, res: Response) => {
 };
 
 export const login = async (req: Request, res: Response) => {
-  const gmail: string = req.body.gmail;
-  const password: string = req.body.password;
-  let all_match: any;
+  try {
+    const gmail: string = req.body.gmail;
+    const password: string = req.body.password;
 
-  user
-    .where("gmail", "==", gmail)
-    .where("password", "==", password)
-    .get()
-    .then((querySnapshot: any) => {
-      querySnapshot.forEach((doc: any) => {
-        all_match = doc.data();
-      });
-      if (querySnapshot.size != 0) {
-        res.status(200).send({
-          status: "success",
-          message: "Login successfully !",
-          payload: {
-            username: all_match.username,
-            id: all_match.id,
-          },
-        });
-      } else {
-        res.send("Account not exist, please register or login again !");
-        console.log("Login fail !");
-      }
-    })
-    .catch((error: any) => {
-      console.log("Error getting documents: ", error);
-      res.status(500).send(error);
+    const user = await User.findOne({ gmail, password });
+
+    if (!user) {
+      res.send("Account not exist, please register or login again !");
+      console.log("Login fail !");
+    }
+
+    res.status(200).send({
+      status: "success",
+      message: "Login successfully !",
+      payload: {
+        username: user?.username,
+        id: user?.id,
+      },
     });
+  } catch (error) {
+    console.log(error);
+  }
 };
